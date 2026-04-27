@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    { "id": "mombasa_port", "name": "Mombasa, Kenya", "lat": -4.0435, "lng": 39.6682, "type": "port" },
+    { "id": "colombo_port", "name": "Colombo Port", "lat": 6.9344, "lng": 79.8428, "type": "port" },
+    { "id": "dubai_hub", "name": "Dubai", "lat": 25.2048, "lng": 55.2708, "type": "air_hub" },
+    { "id": "suez_canal", "name": "Suez", "lat": 30.0253, "lng": 32.5499, "type": "canal" },
+    { "id": "mumbai_port", "name": "Mumbai, India", "lat": 19.0760, "lng": 72.8777, "type": "port" }
+  ],
+  "edges": [
+    { "from": "mombasa_port", "to": "colombo_port", "distance_km": 4100, "base_time_hrs": 48, "cost_usd": 4200, "mode": "sea", "decay_rate": 1.2 },
+    { "from": "colombo_port", "to": "mumbai_port", "distance_km": 1800, "base_time_hrs": 24, "cost_usd": 2100, "mode": "sea", "decay_rate": 1.2 },
+    { "from": "mombasa_port", "to": "dubai_hub", "distance_km": 3500, "base_time_hrs": 18, "cost_usd": 6800, "mode": "air", "decay_rate": 0.6 },
+    { "from": "dubai_hub", "to": "mumbai_port", "distance_km": 1900, "base_time_hrs": 14, "cost_usd": 3200, "mode": "air", "decay_rate": 0.6 },
+    { "from": "mombasa_port", "to": "suez_canal", "distance_km": 4200, "base_time_hrs": 96, "cost_usd": 3600, "mode": "sea", "decay_rate": 1.4 },
+    { "from": "suez_canal", "to": "mumbai_port", "distance_km": 4500, "base_time_hrs": 110, "cost_usd": 4100, "mode": "sea", "decay_rate": 1.4 }
+  ],
+  "named_routes": [
+    {
+      "name": "Route A - Direct Sea",
+      "path": ["mombasa_port", "colombo_port", "mumbai_port"],
+      "risk_factors": ["monsoon_season", "port_congestion"]
+    },
+    {
+      "name": "Route B - Via Dubai Air+Sea",
+      "path": ["mombasa_port", "dubai_hub", "mumbai_port"],
+      "risk_factors": ["airport_handling"]
+    },
+    {
+      "name": "Route C - Via Suez",
+      "path": ["mombasa_port", "suez_canal", "mumbai_port"],
+      "risk_factors": ["canal_congestion", "long_transit"]
+    }
+  ],
+  "dependencies": {
+    "mombasa_port": ["colombo_port", "dubai_hub", "suez_canal"],
+    "colombo_port": ["mumbai_port"],
+    "dubai_hub": ["mumbai_port"],
+    "suez_canal": ["mumbai_port"],
+    "mumbai_port": []
+  }
+}
