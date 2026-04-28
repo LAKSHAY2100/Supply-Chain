@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
-from routers import disruption, explain, quality, risk, routing, shipments, simulate
+from routers import chat, disruption, explain, quality, risk, routing, shipments, simulate
 from services import firestore as fs_service
 from services import graph as graph_service
 from services import mock_data, risk_engine
@@ -66,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(quality.router)
     app.include_router(routing.router)
     app.include_router(explain.router)
+    app.include_router(chat.router)
     app.include_router(disruption.router)
     app.include_router(simulate.router)
 

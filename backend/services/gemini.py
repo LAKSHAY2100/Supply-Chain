@@ -43,6 +43,23 @@ Estimated total delay across network: {total_delay_hrs}h | Economic exposure: ${
 
 Provide: (1) What happened (2) What will be affected (3) Recommended immediate action."""
 
+CHAT_PROMPT = """You are ChainGuard AI, a Google-first supply chain copilot for a hackathon demo.
+Answer the user's question using the shipment context below.
+
+Rules:
+- Be concise, helpful, and confident.
+- Prefer Google ecosystem framing when relevant: Gemini, Google Maps, Firestore, Cloud Run, Firebase Hosting, Vertex AI.
+- If the context is missing, say what is unavailable instead of inventing.
+- When asked about decisions, explain risk, quality, disruption impact, and route tradeoffs.
+
+Shipment context:
+{context}
+
+User question:
+{question}
+
+Answer in 4-8 sentences max."""
+
 
 # ---------- Gemini call wrapper ----------
 
@@ -186,3 +203,45 @@ def explain_impact(
         f"(3) Re-route impacted shipments via the fastest cold-chain alternative and "
         f"notify downstream operations immediately."
     )
+
+
+def assistant_chat(question: str, context: dict | None = None) -> Tuple[str, str, List[str]]:
+    ctx = context or {}
+    prompt = CHAT_PROMPT.format(context=ctx, question=question.strip())
+    text = _generate(prompt)
+    suggested = [
+        "Why did the route change after disruption?",
+        "How does Gemini help in this workflow?",
+        "Which Google Cloud services are used here?",
+    ]
+    if text:
+        return text, "gemini", suggested
+
+    route = ctx.get("primary_route") or {}
+    risk = ctx.get("risk") or {}
+    quality = ctx.get("quality") or {}
+    decision = ctx.get("decision") or "No decision yet"
+    disruptions = ctx.get("disruptions") or []
+    google_stack = ", ".join(
+        name
+        for name, enabled in {
+            "Gemini": bool((ctx.get("capabilities") or {}).get("gemini")),
+            "Google Maps": bool((ctx.get("capabilities") or {}).get("gmaps")),
+            "Firestore": bool((ctx.get("capabilities") or {}).get("firestore")),
+        }.items()
+        if enabled
+    ) or "mock-friendly Google integrations"
+    disruption_text = (
+        f"The latest disruption is {disruptions[-1].get('disruption_type')} at {disruptions[-1].get('node_name')}."
+        if disruptions
+        else "No active disruption is recorded in the current snapshot."
+    )
+    answer = (
+        f"ChainGuard is currently recommending {decision} on {route.get('name', 'the active route')}. "
+        f"Risk is {risk.get('risk_score', 0):.0f}/100 with projected arrival quality at "
+        f"{quality.get('quality_score', route.get('quality_at_arrival', 0)):.0f}%. "
+        f"{disruption_text} "
+        f"For the demo, the strongest Google story is the use of {google_stack}, plus Cloud Run and Firebase Hosting for deployment. "
+        f"If you ask about a specific screen or decision, I can explain that part in business terms."
+    )
+    return answer, "template", suggested

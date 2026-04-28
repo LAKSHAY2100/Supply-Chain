@@ -45,6 +45,25 @@ export default function QualityChart() {
         </span>
       </div>
 
+      <div className="mb-3 grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
+        <Metric label="Arrival quality" value={`${quality.quality_score.toFixed(1)}%`} tone={statusColor(quality.status)} />
+        <Metric label="No-delay quality" value={`${Number(quality.baseline_quality_score || quality.quality_score).toFixed(1)}%`} />
+        <Metric
+          label="Quality lost due to delay"
+          value={`${Number(quality.quality_drop_from_delay || 0).toFixed(1)} pts`}
+          tone={Number(quality.quality_drop_from_delay || 0) > 0 ? "text-rose-600" : "text-emerald-600"}
+        />
+        <Metric
+          label="Extra value loss"
+          value={`${Number(quality.economic_loss_increase_pct || 0).toFixed(1)}%`}
+          tone={Number(quality.economic_loss_increase_pct || 0) > 0 ? "text-rose-600" : "text-emerald-600"}
+        />
+      </div>
+
+      <div className="mb-3 rounded border border-[var(--cg-border)] bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-700">
+        {delayNarrative(quality, primary)}
+      </div>
+
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 12, left: -8, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#dde3f2" />
@@ -108,4 +127,23 @@ function statusColor(status) {
   if (status === "fresh") return "text-emerald-600";
   if (status === "acceptable") return "text-amber-600";
   return "text-rose-600";
+}
+
+function Metric({ label, value, tone = "text-slate-800" }) {
+  return (
+    <div className="rounded border border-[var(--cg-border)] bg-slate-50 p-2">
+      <p className="cg-muted text-[10px] uppercase tracking-wider">{label}</p>
+      <p className={`text-sm font-semibold ${tone}`}>{value}</p>
+    </div>
+  );
+}
+
+function delayNarrative(quality, primary) {
+  const delay = Number(quality.delay_hours_applied || 0);
+  const qualityDrop = Number(quality.quality_drop_from_delay || 0);
+  const valueLoss = Number(quality.economic_loss_increase_pct || 0);
+  if (delay <= 0 || qualityDrop <= 0) {
+    return `At the current ETA of ${primary?.base_eta_hrs?.toFixed?.(1) || 0} hours, the cargo is projected to arrive at ${quality.quality_score.toFixed(1)}% quality without additional delay impact.`;
+  }
+  return `An added delay of ${delay.toFixed(1)} hours reduces projected avocado quality from ${Number(quality.baseline_quality_score || 0).toFixed(1)}% to ${quality.quality_score.toFixed(1)}%, a compromise of ${qualityDrop.toFixed(1)} quality points. That same delay increases estimated economic loss by ${valueLoss.toFixed(1)}%.`;
 }

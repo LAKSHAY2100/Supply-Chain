@@ -6,26 +6,20 @@ export default function StageGraphSection() {
   const builder = useStore((s) => s.builder);
   const form = useStore((s) => s.form);
   const loadingOptimize = useStore((s) => s.loadingOptimize);
-  const graph = buildLiveGraph(builder, form);
+  const routeGraph = useStore((s) => s.routeGraph);
+  const liveGraph = buildLiveGraph(builder, form);
+  const graph = React.useMemo(
+    () => normalizeGraph(routeGraph || liveGraph),
+    [routeGraph, liveGraph],
+  );
   const [animProgress, setAnimProgress] = React.useState(0);
   const [showTraverse, setShowTraverse] = React.useState(false);
   const prevLoadingRef = React.useRef(false);
-
-  if (!graph) {
-    return (
-      <div className="cg-card p-5">
-        <h3 className="cg-title text-sm font-semibold">Stage graph</h3>
-        <p className="cg-muted mt-1 text-xs">
-          Add stages in builder to generate nodes and edges.
-        </p>
-      </div>
-    );
-  }
-
+  const orderedNodes = React.useMemo(() => sortNodes(graph?.nodes || []), [graph]);
   const width = 760;
   const height = 280;
-  const xStep = graph.nodes.length > 1 ? (width - 80) / (graph.nodes.length - 1) : width - 80;
-  const points = graph.nodes.map((node, index) => {
+  const xStep = orderedNodes.length > 1 ? (width - 80) / (orderedNodes.length - 1) : width - 80;
+  const points = orderedNodes.map((node, index) => {
     const y =
       node.kind === "source"
         ? 74
@@ -41,6 +35,17 @@ export default function StageGraphSection() {
     () => shortestPath(graph),
     [graph],
   );
+
+  if (!graph) {
+    return (
+      <div className="cg-card p-5">
+        <h3 className="cg-title text-sm font-semibold">Stage graph</h3>
+        <p className="cg-muted mt-1 text-xs">
+          Add stages in builder to generate nodes and edges.
+        </p>
+      </div>
+    );
+  }
 
   React.useEffect(() => {
     setAnimProgress(0);
@@ -91,9 +96,9 @@ export default function StageGraphSection() {
             Nodes and edges are built live from source, stages, substages, and destination.
           </p>
         </div>
-        <div className="cg-badge cg-muted">
-          nodes {graph.nodes.length} | edges {graph.edges.length} | best path {totalPathScore.toFixed(2)}
-        </div>
+          <div className="cg-badge cg-muted">
+            nodes {graph.nodes.length} | edges {graph.edges.length} | best path {totalPathScore.toFixed(2)}
+          </div>
       </div>
 
       <div className="overflow-x-auto rounded border border-[var(--cg-border)] bg-white p-2">
@@ -112,14 +117,14 @@ export default function StageGraphSection() {
                   y1={a.y}
                   x2={b.x}
                   y2={b.y}
-                  stroke={isPath ? "#94a3b8" : isBranch ? "#bfdbfe" : "#cbd5e1"}
+                  stroke={edge.is_disrupted ? "#dc2626" : isPath ? "#94a3b8" : isBranch ? "#bfdbfe" : "#cbd5e1"}
                   strokeWidth={isPath ? 2 : isBranch ? 1.7 : 1.2}
                   strokeDasharray={isPath ? "6 4" : isBranch ? "7 3" : "4 3"}
                   opacity={isInputMode ? 0.9 : isBest ? 0.9 : 0.45}
                 />
                 {typeof edge.score === "number" ? (
                   <g transform={`translate(${(a.x + b.x) / 2}, ${(a.y + b.y) / 2 - 11})`}>
-                    <rect x="-18" y="-9" width="36" height="18" rx="7" fill="white" stroke="#d6deef" />
+                    <rect x="-20" y="-10" width="40" height="20" rx="7" fill="white" stroke={edge.is_disrupted ? "#fecaca" : "#d6deef"} />
                     <text textAnchor="middle" y="4" fontSize="9.5" fill="#334155" fontWeight="700">
                       {edge.score.toFixed(2)}
                     </text>
@@ -186,10 +191,10 @@ export default function StageGraphSection() {
         <div className="rounded border border-[var(--cg-border)] bg-slate-50 p-3">
           <div className="cg-muted mb-2 text-[11px] uppercase tracking-wider">Nodes</div>
           <div className="max-h-36 space-y-1 overflow-y-auto text-xs">
-            {graph.nodes.map((n) => (
+            {orderedNodes.map((n) => (
               <div key={n.id} className="flex items-center justify-between rounded bg-white px-2 py-1">
                 <span className="text-slate-700">{n.name}</span>
-                <span className="cg-muted">{n.kind}</span>
+                <span className="cg-muted">{n.kind}{n.disrupted ? " | disrupted" : ""}</span>
               </div>
             ))}
           </div>
@@ -206,6 +211,7 @@ export default function StageGraphSection() {
                 <span className="cg-muted">
                   {e.type === "route_path" ? "main path" : e.type === "substage_route" ? "branch route" : "attach"}
                   {typeof e.score === "number" ? ` | score ${e.score.toFixed(2)}` : ""}
+                  {e.disruption_penalty ? ` | penalty +${Number(e.disruption_penalty).toFixed(2)}` : ""}
                   {pathEdgeIds.has(e.id) ? " | selected" : ""}
                 </span>
               </div>
@@ -222,10 +228,13 @@ function truncate(value, max = 12) {
 }
 
 function shortestPath(graph) {
+  if (!graph) {
+    return { pathNodeIds: [], pathEdgeIds: new Set(), pathSegments: [], totalPathScore: 0 };
+  }
   const nodes = graph.nodes || [];
   const edges = (graph.edges || []).filter((e) => Number.isFinite(Number(e.score)));
-  const src = "src";
-  const dst = "dst";
+  const src = nodes.find((n) => n.kind === "source")?.id || "src";
+  const dst = nodes.find((n) => n.kind === "destination")?.id || "dst";
   const adj = {};
   nodes.forEach((n) => {
     adj[n.id] = [];
@@ -301,6 +310,15 @@ function shortestPath(graph) {
   };
 }
 
+function sortNodes(nodes) {
+  return [...(nodes || [])].sort((a, b) => {
+    const rank = { source: 0, stage: 1, substage: 2, destination: 3 };
+    const diff = (rank[a.kind] ?? 1) - (rank[b.kind] ?? 1);
+    if (diff !== 0) return diff;
+    return Number(a.lng || 0) - Number(b.lng || 0);
+  });
+}
+
 function pointAlongPath(pathSegments, progress) {
   if (!pathSegments.length) return null;
   const lens = pathSegments.map((s) => Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y));
@@ -320,4 +338,22 @@ function pointAlongPath(pathSegments, progress) {
   }
   const last = pathSegments[pathSegments.length - 1];
   return { x: last.b.x, y: last.b.y };
+}
+
+function normalizeGraph(graph) {
+  if (!graph) return null;
+  return {
+    nodes: graph.nodes || [],
+    edges: (graph.edges || []).map((edge) => ({
+      ...edge,
+      id: edge.id || `${edge.source}->${edge.target}`,
+      type: edge.type || "route_path",
+      score:
+        typeof edge.score === "number"
+          ? edge.score
+          : Number.isFinite(Number(edge.composite_weight))
+            ? Number(edge.composite_weight)
+            : null,
+    })),
+  };
 }

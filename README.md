@@ -71,6 +71,71 @@ All keys are optional. The app degrades gracefully to deterministic mocks.
 
 ---
 
+## Google-First Hackathon Positioning
+
+This submission is intentionally built to showcase the Google ecosystem end to end:
+
+- `Gemini` for route reasoning, disruption explanation, and the in-app copilot/chatbot
+- `Google Maps` for live route rendering and backend distance/ETA enrichment
+- `Firestore` for shipment persistence with graceful in-memory fallback for offline demos
+- `Cloud Run` for backend deployment
+- `Firebase Hosting` for frontend deployment
+- `Cloud Build` for backend CI/CD
+- `Vertex AI` as the natural next step to productionize the risk model after the hackathon
+
+Even without keys, the app remains fully demoable offline through deterministic mocks. That gives you a safe recording path while still keeping the repo strongly aligned with Google infrastructure.
+
+---
+
+## Demo Flow For Recording
+
+1. Launch backend and frontend locally.
+2. Show the auto-loaded avocado shipment from `Mombasa, Kenya -> Mumbai, India`.
+3. Highlight route comparison, risk score, quality decay, and the selected route.
+4. Open the stage score graph and explain that the shortest path is computed from edge scores.
+5. Inject a disruption at `Dubai` or `Colombo Port`.
+6. Show that edge penalties increase, the graph updates, and the new shortest path is selected.
+7. Use the `Gemini copilot` panel to ask:
+   - `Why did the route change after disruption?`
+   - `Which Google services are used in this project?`
+   - `How does the quality model work for avocados?`
+8. Close with the Google deployment plan: `Firebase Hosting + Cloud Run + Firestore + Gemini`.
+
+---
+
+## Google Deployment
+
+### Backend on Cloud Run
+
+```powershell
+gcloud builds submit --config infrastructure/cloudbuild.yaml
+```
+
+Or manually:
+
+```powershell
+gcloud builds submit --tag us-central1-docker.pkg.dev/$env:GOOGLE_CLOUD_PROJECT/chainguard/chainguard-api backend
+gcloud run deploy chainguard-api `
+  --image us-central1-docker.pkg.dev/$env:GOOGLE_CLOUD_PROJECT/chainguard/chainguard-api `
+  --region us-central1 `
+  --platform managed `
+  --allow-unauthenticated
+```
+
+### Frontend on Firebase Hosting
+
+```powershell
+cd frontend
+npm install
+npm run build
+cd ..
+firebase deploy --only hosting
+```
+
+Set `VITE_API_BASE_URL` to your Cloud Run URL before building the frontend for production.
+
+---
+
 ## Architecture (per spec)
 
 ```

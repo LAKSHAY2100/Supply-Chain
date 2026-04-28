@@ -1,0 +1,24 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - us-central1-docker.pkg.dev/$PROJECT_ID/chainguard/chainguard-api:$COMMIT_SHA
+      - .
+      - -f
+      - backend/Dockerfile
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - chainguard-api
+      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/chainguard/chainguard-api:$COMMIT_SHA
+      - --region=us-central1
+      - --platform=managed
+      - --allow-unauthenticated
+      - --set-env-vars=GEMINI_API_KEY=${_GEMINI_API_KEY},GOOGLE_MAPS_API_KEY=${_GOOGLE_MAPS_API_KEY},OPENWEATHER_API_KEY=${_OPENWEATHER_API_KEY},FIRESTORE_SA_JSON=${_FIRESTORE_SA_JSON}
+
+images:
+  - us-central1-docker.pkg.dev/$PROJECT_ID/chainguard/chainguard-api:$COMMIT_SHA

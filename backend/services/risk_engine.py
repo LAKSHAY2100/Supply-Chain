@@ -101,6 +101,8 @@ def ensure_model_trained() -> None:
     if os.path.exists(_MODEL_PATH):
         try:
             _model = joblib.load(_MODEL_PATH)
+            if hasattr(_model, "n_jobs"):
+                _model.n_jobs = 1
             log.info("Loaded RF model from %s", _MODEL_PATH)
             return
         except Exception as exc:
@@ -110,7 +112,7 @@ def ensure_model_trained() -> None:
 
     X, y = _generate_training_data(500)
     rf = RandomForestClassifier(
-        n_estimators=80, max_depth=8, random_state=_SEED, n_jobs=-1
+        n_estimators=80, max_depth=8, random_state=_SEED, n_jobs=1
     )
     rf.fit(X, y)
     joblib.dump(rf, _MODEL_PATH)

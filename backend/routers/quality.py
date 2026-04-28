@@ -12,7 +12,7 @@ router = APIRouter(tags=["quality"])
 
 @router.post("/predict-quality", response_model=QualityResult)
 def predict_quality(req: QualityRequest) -> QualityResult:
-    quality, status, loss_pct, remaining, curve = quality_engine.predict(
+    quality, status, loss_pct, remaining, curve, delay_impact = quality_engine.predict(
         cargo_type=req.cargo_type,
         elapsed_hours=req.elapsed_hours,
         delay_hours=req.delay_hours,
@@ -26,4 +26,5 @@ def predict_quality(req: QualityRequest) -> QualityResult:
         economic_loss_pct=loss_pct,
         remaining_shelf_life_hrs=remaining,
         decay_curve=curve,
+        **delay_impact,
     )

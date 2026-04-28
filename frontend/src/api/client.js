@@ -25,6 +25,7 @@ export const api = {
     client.post("/simulate-impact", payload).then((r) => r.data),
 
   explain: (payload) => client.post("/explain", payload).then((r) => r.data),
+  assistantChat: (payload) => client.post("/assistant-chat", payload).then((r) => r.data),
 
   listShipments: () => client.get("/shipments").then((r) => r.data),
   getShipment: (id) => client.get(`/shipments/${id}`).then((r) => r.data),

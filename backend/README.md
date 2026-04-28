@@ -22,6 +22,7 @@ OpenAPI docs: <http://localhost:8000/docs>
 | `POST` | `/predict-quality` | Avocado quality decay forecast |
 | `POST` | `/optimize-route` | Computes primary + alternative routes, decision, explanation |
 | `POST` | `/explain` | Gemini-powered natural-language reasoning |
+| `POST` | `/assistant-chat` | Gemini copilot for reviewer/demo questions |
 | `POST` | `/inject-disruption` | Apply a disruption and re-evaluate the shipment |
 | `POST` | `/simulate-impact` | Cascading downstream impact estimate |
 | `GET`  | `/shipments` / `/shipments/{id}` | Read shipment state |

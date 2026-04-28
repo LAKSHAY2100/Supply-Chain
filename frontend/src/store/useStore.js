@@ -48,6 +48,7 @@ export const useStore = create((set, get) => ({
   loadingOptimize: false,
   loadingDisruption: false,
   loadingSimulate: false,
+  loadingAssistant: false,
   error: null,
 
   shipmentId: null,
@@ -60,6 +61,34 @@ export const useStore = create((set, get) => ({
   disruptions: [],
   impact: null,
   routeGraph: null,
+  assistantMessages: [
+    {
+      role: "assistant",
+      text: "Ask me about the route decision, disruption impact, Google services used, or how the quality model works.",
+      source: "template",
+    },
+  ],
+  assistantPrompts: [
+    "Why is this the best route?",
+    "What changes after disruption?",
+    "Which Google services are used?",
+  ],
+
+  buildAssistantContext() {
+    const s = get();
+    return {
+      shipment_id: s.shipmentId,
+      decision: s.decision,
+      recommendation: s.recommendation,
+      primary_route: s.primaryRoute,
+      alternative_route: s.alternativeRoute,
+      risk: s.risk,
+      quality: s.quality,
+      disruptions: s.disruptions,
+      impact: s.impact,
+      capabilities: s.capabilities,
+    };
+  },
 
   async loadCapabilities() {
     try {
@@ -87,6 +116,13 @@ export const useStore = create((set, get) => ({
         disruptions: [],
         impact: null,
         routeGraph: data.route_graph || null,
+        assistantMessages: [
+          {
+            role: "assistant",
+            text: "Route optimization is ready. Ask why this route was selected, what the risk means, or how the Google stack fits the workflow.",
+            source: data.capabilities?.gemini ? "gemini" : "template",
+          },
+        ],
       });
     } catch (e) {
       set({ loadingOptimize: false, error: e.message || "Failed to optimise route." });
@@ -107,6 +143,7 @@ export const useStore = create((set, get) => ({
         risk: data.updated_risk,
         quality: data.updated_quality,
         disruptions: [...s.disruptions, data.disruption],
+        routeGraph: data.route_graph || s.routeGraph,
       }));
       // Auto-fetch impact estimate after disruption.
       await get().simulateImpact(payload.node_name);
@@ -148,7 +185,50 @@ export const useStore = create((set, get) => ({
       impact: null,
       routeGraph: null,
       error: null,
+      assistantMessages: [
+        {
+          role: "assistant",
+          text: "Ask me about the route decision, disruption impact, Google services used, or how the quality model works.",
+          source: "template",
+        },
+      ],
     });
+  },
+
+  async askAssistant(question) {
+    const trimmed = String(question || "").trim();
+    if (!trimmed) return;
+    set((s) => ({
+      loadingAssistant: true,
+      assistantMessages: [...s.assistantMessages, { role: "user", text: trimmed }],
+    }));
+    try {
+      const data = await api.assistantChat({
+        question: trimmed,
+        shipment_id: get().shipmentId,
+        context: get().buildAssistantContext(),
+      });
+      set((s) => ({
+        loadingAssistant: false,
+        assistantMessages: [
+          ...s.assistantMessages,
+          { role: "assistant", text: data.answer, source: data.source },
+        ],
+        assistantPrompts: data.suggested_prompts || s.assistantPrompts,
+      }));
+    } catch (e) {
+      set((s) => ({
+        loadingAssistant: false,
+        assistantMessages: [
+          ...s.assistantMessages,
+          {
+            role: "assistant",
+            text: "I couldn't reach the assistant endpoint, so I suggest continuing with the deterministic demo flow for now.",
+            source: "template",
+          },
+        ],
+      }));
+    }
   },
 
   async optimizeWithStages() {
@@ -246,6 +326,13 @@ export const useStore = create((set, get) => ({
         disruptions: [],
         impact: null,
         routeGraph: data.route_graph || null,
+        assistantMessages: [
+          {
+            role: "assistant",
+            text: "The custom staged route has been computed. Ask me how the shortest path was chosen or what each stage score means.",
+            source: "template",
+          },
+        ],
       });
     } catch (e) {
       set({ loadingOptimize: false, error: e.message || "Failed to optimise staged route." });

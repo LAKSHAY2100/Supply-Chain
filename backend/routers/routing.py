@@ -42,6 +42,8 @@ from services import (
 router = APIRouter(tags=["routing"])
 log = logging.getLogger("chainguard.routing")
 
+STAGE_DISRUPTION_PENALTY = 0.45
+
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     r = 6371.0
@@ -120,6 +122,8 @@ def _stage_edge_score(stage) -> tuple[float, list[str]]:
         factors.append("stage_disrupted")
 
     score = _edge_score(delay, congestion, weather, temp_risk)
+    if stage.disrupted:
+        score = round(score + STAGE_DISRUPTION_PENALTY, 4)
     return score, factors
 
 
@@ -158,7 +162,16 @@ def _build_dynamic_route(req: OptimizeRequest) -> tuple[dict, RouteGraph]:
             kind = "source"
         elif i == len(points) - 1:
             kind = "destination"
-        nodes.append(RouteGraphNode(id=node_ids[i], name=p.name, lat=p.lat, lng=p.lng, kind=kind))
+        nodes.append(
+            RouteGraphNode(
+                id=node_ids[i],
+                name=p.name,
+                lat=p.lat,
+                lng=p.lng,
+                kind=kind,
+                disrupted=bool(getattr(p, "disrupted", False)),
+            )
+        )
 
     for i in range(len(points) - 1):
         a = points[i]
@@ -196,6 +209,11 @@ def _build_dynamic_route(req: OptimizeRequest) -> tuple[dict, RouteGraph]:
                 distance_km=dist,
                 base_eta_hrs=eta,
                 composite_weight=round(segment_weight, 4),
+                disruption_penalty=round(
+                    STAGE_DISRUPTION_PENALTY if getattr(stage, "disrupted", False) and not is_to_destination else 0.0,
+                    4,
+                ),
+                is_disrupted=bool(getattr(stage, "disrupted", False)) and not is_to_destination,
             )
         )
 
@@ -242,7 +260,7 @@ def _enrich_route(route: dict, temp_c: float, day_of_week: int) -> Tuple[Route, 
         transport_mode=route["transport_mode"],
     )
 
-    quality, status, loss, remaining, curve = quality_engine.predict(
+    quality, status, loss, remaining, curve, delay_impact = quality_engine.predict(
         elapsed_hours=route["base_eta_hrs"],
         delay_hours=0.0,
         temp_celsius=temp_c,
@@ -278,6 +296,7 @@ def _enrich_route(route: dict, temp_c: float, day_of_week: int) -> Tuple[Route, 
         economic_loss_pct=loss,
         remaining_shelf_life_hrs=remaining,
         decay_curve=curve,
+        **delay_impact,
     )
     return pyd_route, risk_obj, quality_obj
 
@@ -290,6 +309,7 @@ def optimize_route(req: OptimizeRequest) -> OptimizeResponse:
         routes = [dynamic_route]
     else:
         routes = graph_service.get_named_routes()
+        route_graph = graph_service.export_route_graph()
     if not routes:
         raise RuntimeError("Graph has no named routes between origin/destination")
 

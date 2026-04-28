@@ -137,6 +137,11 @@ class QualityResult(BaseModel):
     economic_loss_pct: float
     remaining_shelf_life_hrs: float
     decay_curve: List[dict]  # [{"hour": int, "quality": float}]
+    delay_hours_applied: float = 0.0
+    baseline_quality_score: float = 100.0
+    quality_drop_from_delay: float = 0.0
+    baseline_economic_loss_pct: float = 0.0
+    economic_loss_increase_pct: float = 0.0
 
 
 # ---------- Routing ----------
@@ -160,6 +165,7 @@ class RouteGraphNode(BaseModel):
     lat: float
     lng: float
     kind: Literal["source", "stage", "destination"] = "stage"
+    disrupted: bool = False
 
 
 class RouteGraphEdge(BaseModel):
@@ -168,6 +174,8 @@ class RouteGraphEdge(BaseModel):
     distance_km: float
     base_eta_hrs: float
     composite_weight: float
+    disruption_penalty: float = 0.0
+    is_disrupted: bool = False
 
 
 class RouteGraph(BaseModel):
@@ -240,6 +248,7 @@ class DisruptionResponse(BaseModel):
     updated_quality: QualityResult
     new_decision: Decision
     new_route: Optional[Route]
+    route_graph: Optional[RouteGraph] = None
 
 
 # ---------- Simulate ----------
@@ -257,3 +266,18 @@ class SimulateResponse(BaseModel):
     estimated_total_delay_hrs: float
     economic_impact_usd: float
     narrative: str
+
+
+# ---------- Assistant ----------
+
+
+class AssistantChatRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=1200)
+    shipment_id: Optional[str] = None
+    context: dict = Field(default_factory=dict)
+
+
+class AssistantChatResponse(BaseModel):
+    answer: str
+    source: Literal["gemini", "template"]
+    suggested_prompts: List[str] = Field(default_factory=list)

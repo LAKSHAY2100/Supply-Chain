@@ -14,6 +14,9 @@ from models.schemas import (
     QualityResult,
     RiskResult,
     Route,
+    RouteGraph,
+    RouteGraphEdge,
+    RouteGraphNode,
 )
 from services import (
     decision_engine,
@@ -26,6 +29,72 @@ from services import (
 
 router = APIRouter(tags=["disruption"])
 log = logging.getLogger("chainguard.disruption")
+CUSTOM_ROUTE_DISRUPTION_PENALTIES = {
+    "port_congestion": 0.5,
+    "weather": 0.7,
+    "customs_delay": 0.4,
+    "mechanical": 0.55,
+    "strike": 0.8,
+}
+
+
+def _build_custom_route_graph(routes: list[dict], disrupted_name: str, disruption_type: str) -> RouteGraph | None:
+    if not routes:
+        return None
+
+    nodes: list[RouteGraphNode] = []
+    edges: list[RouteGraphEdge] = []
+    node_index: dict[str, int] = {}
+    penalty = CUSTOM_ROUTE_DISRUPTION_PENALTIES.get(disruption_type, 0.5)
+
+    def ensure_node(wp: dict, idx: int, total: int) -> str:
+        key = str(wp.get("name") or f"node-{idx}")
+        if key in node_index:
+            return f"n{node_index[key]}"
+        node_index[key] = len(nodes)
+        kind = "stage"
+        if idx == 0:
+            kind = "source"
+        elif idx == total - 1:
+            kind = "destination"
+        nodes.append(
+            RouteGraphNode(
+                id=f"n{node_index[key]}",
+                name=key,
+                lat=float(wp.get("lat", 0.0) or 0.0),
+                lng=float(wp.get("lng", 0.0) or 0.0),
+                kind=kind,
+                disrupted=key.lower() == disrupted_name.lower(),
+            )
+        )
+        return nodes[-1].id
+
+    for route in routes:
+        waypoints = route.get("waypoints") or []
+        if len(waypoints) < 2:
+            continue
+        per_edge_distance = float(route.get("distance_km", 0.0) or 0.0) / max(1, len(waypoints) - 1)
+        per_edge_eta = float(route.get("base_eta_hrs", 0.0) or 0.0) / max(1, len(waypoints) - 1)
+        per_edge_weight = float(route.get("composite_weight", 0.0) or 0.0) / max(1, len(waypoints) - 1)
+        for idx in range(len(waypoints) - 1):
+            src = ensure_node(waypoints[idx], idx, len(waypoints))
+            dst = ensure_node(waypoints[idx + 1], idx + 1, len(waypoints))
+            src_name = str(waypoints[idx].get("name", ""))
+            dst_name = str(waypoints[idx + 1].get("name", ""))
+            edge_disrupted = disrupted_name.lower() in {src_name.lower(), dst_name.lower()}
+            edges.append(
+                RouteGraphEdge(
+                    source=src,
+                    target=dst,
+                    distance_km=round(per_edge_distance, 1),
+                    base_eta_hrs=round(per_edge_eta, 1),
+                    composite_weight=round(per_edge_weight + (penalty if edge_disrupted else 0.0), 3),
+                    disruption_penalty=round(penalty if edge_disrupted else 0.0, 3),
+                    is_disrupted=edge_disrupted,
+                )
+            )
+
+    return RouteGraph(nodes=nodes, edges=edges) if nodes and edges else None
 
 
 @router.post("/inject-disruption", response_model=DisruptionResponse)
@@ -36,10 +105,12 @@ def inject_disruption(req: DisruptionRequest) -> DisruptionResponse:
 
     node_id = graph_service.find_node_id_by_name(req.node_name)
     custom_route_mode = node_id is None
+    route_graph = None
     if not custom_route_mode:
         graph_service.inject_disruption(node_id, req.duration_hrs, req.disruption_type)
         # Re-evaluate routes with disruption applied
         routes = graph_service.get_named_routes()
+        route_graph = graph_service.export_route_graph()
     else:
         # Fallback for user-defined dynamic stage names that are not in seed graph.
         # Re-score currently stored shipment routes by adding disruption penalties
@@ -64,6 +135,7 @@ def inject_disruption(req: DisruptionRequest) -> DisruptionResponse:
             )
         if not routes:
             raise HTTPException(status_code=400, detail=f"Unknown node: {req.node_name}")
+        route_graph = _build_custom_route_graph(routes, req.node_name, req.disruption_type)
     enriched = []
     for r in routes:
         last = r["waypoints"][-1]["name"] if r["waypoints"] else ""
@@ -78,7 +150,7 @@ def inject_disruption(req: DisruptionRequest) -> DisruptionResponse:
             transport_mode=r["transport_mode"],
         )
         extra_delay = req.duration_hrs if r.get("uses_disrupted_node") else 0.0
-        q, status, loss, remaining, curve = quality_engine.predict(
+        q, status, loss, remaining, curve, delay_impact = quality_engine.predict(
             elapsed_hours=r["base_eta_hrs"],
             delay_hours=extra_delay,
             temp_celsius=shipment.get("current_temp_celsius", 9.0),
@@ -114,6 +186,7 @@ def inject_disruption(req: DisruptionRequest) -> DisruptionResponse:
                     economic_loss_pct=loss,
                     remaining_shelf_life_hrs=remaining,
                     decay_curve=curve,
+                    **delay_impact,
                 ),
             )
         )
@@ -171,6 +244,7 @@ def inject_disruption(req: DisruptionRequest) -> DisruptionResponse:
             primary_factor=primary_factor,
         ),
         new_route=new_primary,
+        route_graph=route_graph,
     )
 
 

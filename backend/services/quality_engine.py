@@ -74,17 +74,20 @@ def predict(
     delay_hours: float = 0.0,
     temp_celsius: float = 9.0,
     initial_quality: float = 100.0,
-) -> Tuple[float, str, float, float, List[Dict]]:
-    """Return (quality, status, loss_pct, remaining_shelf_life, decay_curve)."""
+) -> Tuple[float, str, float, float, List[Dict], Dict]:
+    """Return (quality, status, loss_pct, remaining_shelf_life, decay_curve, delay_impact)."""
     total_hours = max(0.0, elapsed_hours + delay_hours)
+    baseline_hours = max(0.0, elapsed_hours)
 
     # Use the MVP linear formula (spec section 4.4) as the primary score; the
     # exponential model is too aggressive and causes near-zero quality very fast,
     # which contradicts the spec's own sample data (Route B at ~64% after 38h).
     quality = round(_linear_quality(initial_quality, total_hours, temp_celsius), 2)
+    baseline_quality = round(_linear_quality(initial_quality, baseline_hours, temp_celsius), 2)
 
     status = _status(quality)
     loss = _economic_loss_pct(quality)
+    baseline_loss = _economic_loss_pct(baseline_quality)
     remaining = _remaining_shelf_life(quality, temp_celsius)
 
     # Hourly decay curve over the next 96h for chart rendering
@@ -93,7 +96,15 @@ def predict(
     for hr in range(0, horizon + 1, 4):
         curve.append({"hour": hr, "quality": round(_linear_quality(initial_quality, hr, temp_celsius), 2)})
 
-    return quality, status, loss, remaining, curve
+    delay_impact = {
+        "delay_hours_applied": round(max(0.0, delay_hours), 1),
+        "baseline_quality_score": baseline_quality,
+        "quality_drop_from_delay": round(max(0.0, baseline_quality - quality), 2),
+        "baseline_economic_loss_pct": baseline_loss,
+        "economic_loss_increase_pct": round(max(0.0, loss - baseline_loss), 2),
+    }
+
+    return quality, status, loss, remaining, curve, delay_impact
 
 
 def predict_for_route(
@@ -103,7 +114,7 @@ def predict_for_route(
     extra_delay_hrs: float = 0.0,
 ) -> Tuple[float, str, float]:
     """Compact helper used by routing layer for quality_at_arrival."""
-    q, s, loss, _, _ = predict(
+    q, s, loss, _, _, _ = predict(
         elapsed_hours=base_eta_hrs,
         delay_hours=extra_delay_hrs,
         temp_celsius=temp_celsius,
