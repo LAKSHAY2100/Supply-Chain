@@ -7,6 +7,8 @@ import RiskPanel from "./components/RiskPanel.jsx";
 import DecisionPanel from "./components/DecisionPanel.jsx";
 import GeminiExplain from "./components/GeminiExplain.jsx";
 import DisruptionButton from "./components/DisruptionButton.jsx";
+import RouteBuilder from "./components/RouteBuilder.jsx";
+import StageGraphSection from "./components/StageGraphSection.jsx";
 import { useStore } from "./store/useStore.js";
 
 export default function App() {
@@ -22,36 +24,33 @@ export default function App() {
   }, [loadCapabilities, optimize]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="cg-shell flex flex-col">
       <Header />
 
       {error && (
-        <div className="mx-6 mt-4 px-4 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">
+        <div className="mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
           {error}
         </div>
       )}
 
-      <main className="flex-1 grid grid-cols-12 gap-5 p-6 max-w-[1600px] w-full mx-auto">
-        <section className="col-span-12 lg:col-span-3 space-y-5">
-          <ShipmentForm />
-          <DisruptionButton />
-          <RiskPanel />
-        </section>
+      <main className="flex-1 px-5 py-5">
+        <div className="mx-auto max-w-[1600px] cg-grid">
+          <section className="space-y-5">
+            <MapView />
+            <StageGraphSection />
+            <QualityChart />
+          </section>
 
-        <section className="col-span-12 lg:col-span-6 space-y-5">
-          <MapView />
-          <QualityChart />
-        </section>
-
-        <section className="col-span-12 lg:col-span-3 space-y-5">
-          <DecisionPanel />
-          <GeminiExplain />
-        </section>
+          <aside className="space-y-5">
+            <ShipmentForm />
+            <RouteBuilder />
+            <DisruptionButton />
+            <RiskPanel />
+            <DecisionPanel />
+            <GeminiExplain />
+          </aside>
+        </div>
       </main>
-
-      <footer className="px-6 py-3 text-center text-xs text-slate-500 border-t border-slate-800/40">
-        ChainGuard AI -- Track -&gt; Analyse -&gt; Predict -&gt; Simulate -&gt; Decide -&gt; Explain
-      </footer>
     </div>
   );
 }

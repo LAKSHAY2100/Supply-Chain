@@ -35,13 +35,35 @@ def inject_disruption(req: DisruptionRequest) -> DisruptionResponse:
         raise HTTPException(status_code=404, detail=f"Shipment {req.shipment_id} not found")
 
     node_id = graph_service.find_node_id_by_name(req.node_name)
-    if not node_id:
-        raise HTTPException(status_code=400, detail=f"Unknown node: {req.node_name}")
-
-    graph_service.inject_disruption(node_id, req.duration_hrs, req.disruption_type)
-
-    # Re-evaluate routes with disruption applied
-    routes = graph_service.get_named_routes()
+    custom_route_mode = node_id is None
+    if not custom_route_mode:
+        graph_service.inject_disruption(node_id, req.duration_hrs, req.disruption_type)
+        # Re-evaluate routes with disruption applied
+        routes = graph_service.get_named_routes()
+    else:
+        # Fallback for user-defined dynamic stage names that are not in seed graph.
+        # Re-score currently stored shipment routes by adding disruption penalties
+        # when the disrupted node appears in the route waypoints.
+        routes = []
+        for r in shipment.get("routes") or []:
+            routes.append(
+                {
+                    "name": r.get("name", "User Defined Route"),
+                    "waypoints": r.get("waypoints", []),
+                    "distance_km": float(r.get("distance_km", 0.0)),
+                    "base_eta_hrs": float(r.get("base_eta_hrs", 0.0)),
+                    "risk_factors": list(r.get("risk_factors", [])),
+                    "composite_weight": float(r.get("composite_weight", 0.0)),
+                    "cost_usd": float(r.get("cost_usd", 0.0)),
+                    "transport_mode": r.get("transport_mode", "multimodal"),
+                    "uses_disrupted_node": any(
+                        str(wp.get("name", "")).lower() == req.node_name.lower()
+                        for wp in r.get("waypoints", [])
+                    ),
+                }
+            )
+        if not routes:
+            raise HTTPException(status_code=400, detail=f"Unknown node: {req.node_name}")
     enriched = []
     for r in routes:
         last = r["waypoints"][-1]["name"] if r["waypoints"] else ""

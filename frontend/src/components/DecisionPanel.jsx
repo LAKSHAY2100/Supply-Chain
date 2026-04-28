@@ -17,9 +17,9 @@ export default function DecisionPanel() {
 
   if (!decision) {
     return (
-      <div className="glass p-5">
-        <h3 className="text-sm font-semibold text-slate-300 mb-1">Decision</h3>
-        <p className="text-xs text-slate-500">No decision yet. Optimise a route to start.</p>
+      <div className="cg-card p-5">
+        <h3 className="cg-title mb-1 text-sm font-semibold">Decision</h3>
+        <p className="cg-muted text-xs">No decision yet. Optimise a route to start.</p>
       </div>
     );
   }
@@ -27,25 +27,25 @@ export default function DecisionPanel() {
   const meta = DECISION_META[decision] || { label: decision, color: "slate" };
 
   return (
-    <div className="glass p-5 space-y-3">
+    <div className="cg-card space-y-3 p-5">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-300">Decision engine</h3>
+        <h3 className="cg-title text-sm font-semibold">Decision engine</h3>
         <Badge color={meta.color}>{meta.label.toUpperCase()}</Badge>
       </div>
 
-      <div className="text-xs text-slate-300 leading-relaxed bg-slate-900/40 border border-slate-800/50 rounded p-3">
+      <div className="rounded border border-[var(--cg-border)] bg-[var(--cg-primary-soft)] p-3 text-xs leading-relaxed text-slate-700">
         {recommendation || "Awaiting Gemini reasoning..."}
       </div>
 
       {primary && (
-        <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800/60">
+        <div className="flex items-center justify-between border-t border-[var(--cg-border)] pt-2 text-xs">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-slate-500">Selected route</p>
-            <p className="font-medium text-slate-200">{primary.name}</p>
+            <p className="cg-muted text-[10px] uppercase tracking-wider">Selected route</p>
+            <p className="font-medium text-slate-700">{primary.name}</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] uppercase tracking-wider text-slate-500">Q at arrival</p>
-            <p className="font-semibold text-primary-400">
+            <p className="cg-muted text-[10px] uppercase tracking-wider">Q at arrival</p>
+            <p className="font-semibold text-emerald-600">
               {primary.quality_at_arrival.toFixed(0)}%
             </p>
           </div>
@@ -65,11 +65,11 @@ export default function DecisionPanel() {
 
 function Badge({ color, children }) {
   const map = {
-    emerald: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    sky: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-    amber: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-    rose: "bg-rose-500/15 text-rose-300 border-rose-500/30",
-    slate: "bg-slate-700/50 text-slate-200 border-slate-600/40",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    sky: "border-sky-200 bg-sky-50 text-sky-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+    rose: "border-rose-200 bg-rose-50 text-rose-700",
+    slate: "border-slate-300 bg-slate-50 text-slate-700",
   };
   return (
     <span className={`text-[10px] font-semibold uppercase border rounded px-2 py-0.5 ${map[color] || map.slate}`}>
@@ -80,9 +80,9 @@ function Badge({ color, children }) {
 
 function Mini({ label, value }) {
   return (
-    <div className="bg-slate-900/40 border border-slate-800/50 rounded p-2">
-      <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="text-sm font-medium text-slate-200 truncate">{value}</p>
+    <div className="rounded border border-[var(--cg-border)] bg-slate-50 p-2">
+      <p className="cg-muted text-[10px] uppercase tracking-wider">{label}</p>
+      <p className="truncate text-sm font-medium text-slate-700">{value}</p>
     </div>
   );
 }

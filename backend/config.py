@@ -21,11 +21,9 @@ class Settings(BaseSettings):
     google_maps_api_key: str = ""
     openweather_api_key: str = ""
     firestore_sa_json: str = ""
-    cors_origins: str = (
-        "http://localhost:5173,http://127.0.0.1:5173,"
-        "http://localhost:5174,http://127.0.0.1:5174,"
-        "http://localhost:5175,http://127.0.0.1:5175"
-    )
+    # Dev-friendly default to prevent local preflight failures across
+    # localhost, LAN IPs, and varying Vite ports.
+    cors_origins: str = "*"
 
     @property
     def has_gemini(self) -> bool:

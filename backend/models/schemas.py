@@ -25,6 +25,52 @@ class Waypoint(BaseModel):
     lng: float
 
 
+class SubStageInput(Waypoint):
+    id: Optional[str] = None
+    disrupted: bool = False
+    route_mode: Optional[str] = None
+    route_target: Optional[str] = None
+    stage_type: Literal["port", "warehouse", "distribution"] = "distribution"
+    congestion_level: Optional[Literal["low", "medium", "high"]] = None
+    average_delay_hours: Optional[float] = 0.0
+    customs_clearance_hours: Optional[float] = 0.0
+    weather_condition: Optional[Literal["normal", "risky"]] = None
+    capacity_utilization_pct: Optional[float] = 0.0
+    processing_delay_hours: Optional[float] = 0.0
+    temperature_status: Optional[Literal["safe", "unsafe"]] = None
+    demand_level: Optional[Literal["low", "medium", "high"]] = None
+    dispatch_delay_hours: Optional[float] = 0.0
+    local_traffic_level: Optional[Literal["low", "medium", "high"]] = None
+
+
+class StageInput(Waypoint):
+    stage_type: Literal["port", "warehouse", "distribution"] = "port"
+    disrupted: bool = False
+    congestion_level: Optional[Literal["low", "medium", "high"]] = None
+    average_delay_hours: Optional[float] = 0.0
+    customs_clearance_hours: Optional[float] = 0.0
+    weather_condition: Optional[Literal["normal", "risky"]] = None
+    capacity_utilization_pct: Optional[float] = 0.0
+    processing_delay_hours: Optional[float] = 0.0
+    temperature_status: Optional[Literal["safe", "unsafe"]] = None
+    demand_level: Optional[Literal["low", "medium", "high"]] = None
+    dispatch_delay_hours: Optional[float] = 0.0
+    local_traffic_level: Optional[Literal["low", "medium", "high"]] = None
+    sub_stages: List[SubStageInput] = []
+
+
+class SourceNodeInput(Waypoint):
+    node_type: Literal["factory", "export_hub", "port"] = "factory"
+    ready_time: Optional[str] = None
+    initial_delay_risk: float = 0.0
+
+
+class DestinationNodeInput(Waypoint):
+    node_type: Literal["distribution_hub", "warehouse"] = "distribution_hub"
+    delivery_deadline_hours: Optional[float] = None
+    demand_level: Optional[Literal["low", "medium", "high"]] = "medium"
+
+
 class Route(BaseModel):
     name: str
     waypoints: List[Waypoint]
@@ -103,6 +149,30 @@ class OptimizeRequest(BaseModel):
     deadline_hours: int = 72
     weight_kg: float = 2000
     current_temp_celsius: float = 9.0
+    source: Optional[SourceNodeInput] = None
+    destination_point: Optional[DestinationNodeInput] = Field(None, alias="destination_point")
+    stages: List[StageInput] = []
+
+
+class RouteGraphNode(BaseModel):
+    id: str
+    name: str
+    lat: float
+    lng: float
+    kind: Literal["source", "stage", "destination"] = "stage"
+
+
+class RouteGraphEdge(BaseModel):
+    source: str
+    target: str
+    distance_km: float
+    base_eta_hrs: float
+    composite_weight: float
+
+
+class RouteGraph(BaseModel):
+    nodes: List[RouteGraphNode]
+    edges: List[RouteGraphEdge]
 
 
 class OptimizeResponse(BaseModel):
@@ -113,6 +183,7 @@ class OptimizeResponse(BaseModel):
     decision: str
     quality: QualityResult
     risk: RiskResult
+    route_graph: Optional[RouteGraph] = None
 
 
 # ---------- Decision ----------

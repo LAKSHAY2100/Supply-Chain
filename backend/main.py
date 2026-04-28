@@ -41,6 +41,8 @@ async def lifespan(_: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    cors_origins = settings.cors_origin_list
+    allow_all_origins = "*" in cors_origins
     app = FastAPI(
         title="ChainGuard AI",
         description="AI-powered, perishable-aware supply chain intelligence (MVP).",
@@ -52,9 +54,9 @@ def create_app() -> FastAPI:
     # regardless of which port it binds to (5173, 5174, ...).
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origin_list,
-        allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
-        allow_credentials=True,
+        allow_origins=["*"] if allow_all_origins else cors_origins,
+        allow_origin_regex=None if allow_all_origins else r"http://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?",
+        allow_credentials=False if allow_all_origins else True,
         allow_methods=["*"],
         allow_headers=["*"],
     )

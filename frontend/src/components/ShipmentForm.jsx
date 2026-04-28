@@ -21,12 +21,12 @@ export default function ShipmentForm() {
   };
 
   return (
-    <form onSubmit={onSubmit} className="glass p-5 space-y-4">
+    <form onSubmit={onSubmit} className="cg-card p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-sm tracking-wide uppercase text-slate-300">
+        <h2 className="cg-title text-sm font-semibold uppercase tracking-wider">
           Shipment
         </h2>
-        <span className="text-xs text-slate-500">live optimisation</span>
+        <span className="cg-badge cg-muted">live optimization</span>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -35,7 +35,7 @@ export default function ShipmentForm() {
             name="origin"
             value={form.origin}
             onChange={handle}
-            className="input"
+            className="cg-input"
           />
         </Field>
         <Field label="Destination">
@@ -43,7 +43,7 @@ export default function ShipmentForm() {
             name="destination"
             value={form.destination}
             onChange={handle}
-            className="input"
+            className="cg-input"
           />
         </Field>
         <Field label="Cargo">
@@ -51,7 +51,7 @@ export default function ShipmentForm() {
             name="cargo_type"
             value={form.cargo_type}
             onChange={handle}
-            className="input"
+            className="cg-input"
           >
             {cargoOptions.map((c) => (
               <option key={c} value={c}>
@@ -67,7 +67,7 @@ export default function ShipmentForm() {
             min="100"
             value={form.weight_kg}
             onChange={handle}
-            className="input"
+            className="cg-input"
           />
         </Field>
         <Field label="Deadline (h)">
@@ -77,7 +77,7 @@ export default function ShipmentForm() {
             min="12"
             value={form.deadline_hours}
             onChange={handle}
-            className="input"
+            className="cg-input"
           />
         </Field>
         <Field label="Truck temp (deg C)">
@@ -87,7 +87,7 @@ export default function ShipmentForm() {
             step="0.5"
             value={form.current_temp_celsius}
             onChange={handle}
-            className="input"
+            className="cg-input"
           />
         </Field>
       </div>
@@ -95,25 +95,10 @@ export default function ShipmentForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-2.5 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+        className="cg-btn-primary w-full rounded-lg py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? "Optimising..." : "Optimise route"}
       </button>
-
-      <style>{`
-        .input {
-          width: 100%;
-          padding: 0.5rem 0.75rem;
-          border-radius: 0.5rem;
-          background: rgba(15, 23, 42, 0.6);
-          border: 1px solid rgba(148, 163, 184, 0.15);
-          color: #e2e8f0;
-          font-size: 0.875rem;
-          outline: none;
-          transition: border-color 0.15s;
-        }
-        .input:focus { border-color: rgba(16, 185, 129, 0.6); }
-      `}</style>
     </form>
   );
 }
@@ -121,7 +106,7 @@ export default function ShipmentForm() {
 function Field({ label, children }) {
   return (
     <label className="block">
-      <span className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+      <span className="cg-muted mb-1 block text-[11px] uppercase tracking-wider">
         {label}
       </span>
       {children}

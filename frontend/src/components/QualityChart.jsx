@@ -31,15 +31,15 @@ export default function QualityChart() {
   }
 
   return (
-    <div className="glass p-5 h-[320px] flex flex-col">
+    <div className="cg-card flex h-[320px] flex-col p-5">
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-200">Quality decay forecast</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="cg-title text-sm font-semibold">Quality decay forecast</h3>
+          <p className="cg-muted text-xs">
             Avocado quality vs. hours in transit at current temp
           </p>
         </div>
-        <span className="text-xs text-slate-400">
+        <span className="cg-muted text-xs">
           status:{" "}
           <span className={statusColor(quality.status)}>{quality.status}</span>
         </span>
@@ -47,30 +47,30 @@ export default function QualityChart() {
 
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 12, left: -8, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#dde3f2" />
           <XAxis
             dataKey="hour"
-            tick={{ fill: "#64748b", fontSize: 11 }}
-            stroke="#1e293b"
-            label={{ value: "hours", position: "insideBottom", offset: -2, fill: "#475569", fontSize: 10 }}
+            tick={{ fill: "#66728f", fontSize: 11 }}
+            stroke="#dde3f2"
+            label={{ value: "hours", position: "insideBottom", offset: -2, fill: "#66728f", fontSize: 10 }}
           />
           <YAxis
             domain={[0, 100]}
-            tick={{ fill: "#64748b", fontSize: 11 }}
-            stroke="#1e293b"
+            tick={{ fill: "#66728f", fontSize: 11 }}
+            stroke="#dde3f2"
           />
           <Tooltip
             contentStyle={{
-              background: "#0b1120",
-              border: "1px solid #1e293b",
+              background: "#ffffff",
+              border: "1px solid #dde3f2",
               borderRadius: 8,
               fontSize: 12,
             }}
-            labelStyle={{ color: "#94a3b8" }}
+            labelStyle={{ color: "#66728f" }}
             formatter={(v) => [`${v}%`, "quality"]}
             labelFormatter={(h) => `${h}h elapsed`}
           />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#66728f" }} />
           <ReferenceLine y={75} stroke="#10b981" strokeDasharray="3 3" label={{ value: "fresh", fill: "#10b981", fontSize: 10, position: "right" }} />
           <ReferenceLine y={40} stroke="#f59e0b" strokeDasharray="3 3" label={{ value: "acceptable", fill: "#f59e0b", fontSize: 10, position: "right" }} />
           {primary?.base_eta_hrs && (
@@ -84,7 +84,7 @@ export default function QualityChart() {
           <Line
             type="monotone"
             dataKey="quality"
-            stroke="#10b981"
+            stroke="#1f9960"
             strokeWidth={2.5}
             dot={false}
             name="Quality %"
@@ -97,15 +97,15 @@ export default function QualityChart() {
 
 function Empty({ title, subtitle }) {
   return (
-    <div className="glass p-5 h-[320px] flex flex-col items-center justify-center text-center">
-      <h3 className="text-sm font-semibold text-slate-300 mb-1">{title}</h3>
-      <p className="text-xs text-slate-500">{subtitle}</p>
+    <div className="cg-card flex h-[320px] flex-col items-center justify-center p-5 text-center">
+      <h3 className="cg-title mb-1 text-sm font-semibold">{title}</h3>
+      <p className="cg-muted text-xs">{subtitle}</p>
     </div>
   );
 }
 
 function statusColor(status) {
-  if (status === "fresh") return "text-primary-400";
-  if (status === "acceptable") return "text-amber-400";
-  return "text-rose-400";
+  if (status === "fresh") return "text-emerald-600";
+  if (status === "acceptable") return "text-amber-600";
+  return "text-rose-600";
 }
